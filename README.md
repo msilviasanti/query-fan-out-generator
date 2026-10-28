@@ -43,7 +43,7 @@ Content marketers and copywriters who write blog posts and want them to show up 
 
 Queries are written the way people in each market actually search, not translated from English. Supported: English (global, UK, US), Italian, Dutch (Netherlands, Belgium), German, French and Spanish.
 
-## How this version works
+## How this version of NextGen Query Fan-Out Generator works
 
 This is the **static version**: a single HTML page with no server and no API key.
 
