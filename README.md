@@ -2,7 +2,7 @@
 
 **See the hidden searches AI search runs behind your topic, then write the blog post that answers them all.**
 
-**[Open the tool](https://YOUR-USERNAME.github.io/query-fan-out-generator/)** · Free · No sign-up · Works with any AI chat
+**[Open the tool](https://msilviasanti.github.io/query-fan-out-generator/)** · Free · No sign-up · Works with any AI chat
 
 ---
 
