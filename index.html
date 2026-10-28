@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta property="og:title" content="NextGen Query Fan-Out Generator">
+<meta property="og:description" content="See the hidden searches AI Overviews, AI Mode, ChatGPT, Claude and Perplexity run behind your topic. Free, no sign-up.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary">
+<title>Query Fan-Out Generator</title>
+<meta name="description" content="Free query fan-out generator: see the hidden searches Google AI Overviews, AI Mode, ChatGPT, Claude and Perplexity run behind your topic, check your draft for gaps and get a ready-to-write outline.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+html{color-scheme:light}body{margin:0}img{max-width:100%}
+/* Layout: lab-notebook on lime paper. Hero with a thin-line cone (1 query -> N searches), a compact control strip, then tabbed results: Searches / Outline / Draft check */
+:root{
+  --bg:#fbfdf8;        /* near-white with a green bias */
+  --panel:#f2f9ea;     /* pale lime panel */
+  --fill:#d6fcae;      /* lime: shape fill, hover, highlights */
+  --green:#bfeb98;     /* solid green for key shapes */
+  --green-line:#a6db7c;/* same hue, a touch deeper, for lines */
+  --console:#e2f5cb;   /* tool panel */
+  --field:#ffffff;
+  --ink:#0a0d08;
+  --muted:#3d4736;
+  --line:#b3d197;
+  --line-soft:#dcebc9;
+  --btn:#0a0d08; --btn-ink:#e9ffd3;
+  --ok:#1a5e28; --warn:#7a4f00; --bad:#a8321a;
+  color-scheme:light;
+  --display:"Instrument Serif","Iowan Old Style","Times New Roman",serif;
+  --body:"Geist",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+/* Single light theme by design */
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 72px}
+.page{max-width:1040px;margin:0 auto;display:grid;gap:44px}
+h1,h2,h3{margin:0;font-weight:400}
+em{font-style:italic}
+.mono{font-family:var(--mono)}
+.label{font:500 11px/1.3 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* Top bar */
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.mark{display:flex;align-items:center;gap:10px;font:500 13px var(--mono)}
+.mark svg{display:block}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--ink);border-radius:999px;padding:4px 10px}
+
+/* Hero */
+.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:32px;align-items:center}
+.hero h1{font:400 clamp(48px,8.4vw,96px)/.92 var(--display);letter-spacing:-.025em;text-wrap:balance}
+.hero p.lede{font-size:18px;line-height:1.5;max-width:46ch;margin:22px 0 0;color:var(--ink)}
+.cone{display:grid;gap:6px}
+.cone svg{width:100%;height:auto;display:block}
+.cone-nums{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.num{font:400 clamp(44px,6vw,68px)/1 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.num-cap{font-size:13px;color:var(--muted);margin-top:4px}
+.cone-nums .r{text-align:right}
+.src{font-size:11.5px;line-height:1.45;color:var(--muted);max-width:34ch;margin:8px 0 0 auto}
+.src a{color:var(--ink)}
+.lede em{font-style:normal;background:var(--fill);padding:0 3px}
+
+/* Steps */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:1px solid var(--ink)}
+.step{padding:14px 18px 4px 0;display:grid;gap:4px}
+.step+.step{padding-left:18px;border-left:1px solid var(--line)}
+.step b{font:400 22px/1.1 var(--display)}
+.step span{font-size:14px;color:var(--muted)}
+
+/* Console */
+.console{background:var(--console);border:0;border-radius:18px;padding:22px;display:grid;gap:18px}
+.seed-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.field{display:grid;gap:6px;min-width:0}
+.field label{font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+input[type=text],select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+#seed{font:400 clamp(22px,3vw,30px)/1.15 var(--display);padding:12px 14px}
+.console input[type=text],.console select{background-color:var(--field);border-color:transparent}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%230a0d08' stroke-width='1.6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:40px;cursor:pointer}
+.cone svg path,.cone svg .ring,.diagram svg path,.diagram svg ellipse[stroke-dasharray]{stroke:var(--green-line)}
+textarea{resize:vertical;line-height:1.45}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.hint{font-size:13px;color:var(--muted)}
+details.adv summary{cursor:pointer;font:500 12px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);list-style:none}
+details.adv summary::before{content:"+ "}
+details.adv[open] summary::before{content:"– "}
+.types{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tchip{display:inline-flex;gap:7px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;background:var(--bg)}
+.tchip input{accent-color:var(--ink);margin:0}
+.btn{border:1px solid var(--btn);background:var(--btn);color:var(--btn-ink);border-radius:999px;padding:12px 22px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{filter:brightness(1.15)}
+.btn:disabled{opacity:.5;cursor:default}
+.ghost{border:1px solid var(--ink);background:transparent;color:var(--ink);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:500;cursor:pointer}
+.ghost:hover{background:var(--fill)}
+.link{background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:14px}
+.actions{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center}
+.status{font:400 13px var(--mono);color:var(--muted)}
+.status.err{color:var(--bad)}
+.manual{border:1px dashed var(--ink);border-radius:14px;padding:16px;display:grid;gap:10px;background:var(--bg)}
+.manual ol{margin:0;padding-left:20px;display:grid;gap:4px}
+
+/* Results */
+.results{display:grid;gap:22px}
+.rhead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.rhead h2{font:400 clamp(30px,4.4vw,46px)/1.05 var(--display);letter-spacing:-.015em;text-wrap:balance;max-width:24ch}
+.example{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;background:var(--ink);color:var(--bg);padding:4px 9px;border-radius:999px}
+.intent{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:baseline;border-top:1px solid var(--ink);border-bottom:1px solid var(--line);padding:12px 0}
+.intent p{margin:0;font-size:16px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--ink);overflow-x:auto}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px 9px;cursor:pointer;font-weight:500;white-space:nowrap;color:var(--muted)}
+.tab[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ink)}
+.tab .c{font:500 11px var(--mono);margin-left:6px}
+.panel{display:grid;gap:22px}
+
+.diagram{overflow-x:auto;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.diagram svg{display:block;min-width:560px;width:100%;height:auto}
+.diagram .node{cursor:pointer}
+.diagram .node:hover ellipse{fill:var(--ink)}
+
+.toolbar{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.group{display:grid;gap:8px;scroll-margin-top:16px}
+.ghead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.ghead h3{font:400 28px/1.1 var(--display)}
+.ghead .n{font:500 12px var(--mono);color:var(--muted)}
+.ghead p{margin:0;color:var(--muted);font-size:14px;flex-basis:100%}
+.q{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 14px;align-items:start;padding:12px 0;border-top:1px solid var(--line)}
+.prio{width:12px;height:12px;border-radius:50%;margin-top:6px;border:1.5px solid var(--ink)}
+.prio.must{background:var(--ink)}
+.prio.should{background:linear-gradient(90deg,var(--ink) 50%,transparent 50%)}
+.q .qt{font-weight:600;font-size:16px}
+.q .why{color:var(--muted);font-size:14px}
+.q .meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:flex-end}
+.chip{font:500 11px var(--mono);border:1px solid var(--line);border-radius:6px;padding:2px 7px;white-space:nowrap;color:var(--muted)}
+.mini{border:0;background:none;font:500 11px var(--mono);color:var(--ink);cursor:pointer;padding:2px 4px;text-decoration:underline;text-underline-offset:2px}
+.cov{grid-column:2/-1;display:flex;gap:8px;align-items:baseline;font-size:13px}
+.st{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:6px;border:1px solid currentColor;white-space:nowrap}
+.st.covered{color:var(--ok)} .st.partial{color:var(--warn)} .st.missing{color:var(--bad)}
+
+/* Outline */
+.brief-top{display:grid;gap:8px}
+.brief-top .h1{font:400 clamp(26px,3.6vw,38px)/1.1 var(--display);text-wrap:balance}
+.brief-top p{margin:0;color:var(--muted);max-width:70ch}
+.ol{display:grid;gap:0;border-top:1px solid var(--ink)}
+.oi{display:grid;grid-template-columns:52px minmax(0,1fr);gap:4px 14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.oi.h3{padding-left:28px;grid-template-columns:52px minmax(0,1fr)}
+.oi .lv{font:500 11px var(--mono);color:var(--muted);padding-top:5px}
+.oi .h{font-weight:600;font-size:17px}
+.oi.h3 .h{font-weight:500;font-size:15px}
+.oi .tip{color:var(--muted);font-size:14px}
+.oi .ans{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.oi .ans .chip{color:var(--ink)}
+
+/* Draft check */
+.draft-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+.score{display:grid;gap:10px;background:var(--panel);border:1px solid var(--ink);border-radius:16px;padding:20px}
+.score .big{font:400 72px/1 var(--display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.bar{height:10px;border-radius:99px;background:var(--bg);border:1px solid var(--ink);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.fixes{margin:0;padding-left:18px;display:grid;gap:6px}
+.empty{border:1px dashed var(--line);border-radius:16px;padding:22px;color:var(--muted)}
+
+footer{border-top:1px solid var(--ink);padding-top:16px;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:24px;font-size:13px;color:var(--muted)}
+footer p{margin:0 0 8px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:13px;z-index:20}
+
+@media (max-width:760px){
+  .hero{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr}
+  .step+.step{padding-left:0;border-left:0;border-top:1px solid var(--line)}
+  .seed-row{grid-template-columns:1fr}
+  .draft-grid{grid-template-columns:1fr}
+  footer{grid-template-columns:1fr}
+  .q{grid-template-columns:auto minmax(0,1fr)}
+  .q .meta{grid-column:2;justify-content:flex-start}
+}
+@media (prefers-reduced-motion:no-preference){
+  .cone .ring{animation:pulse 3.2s ease-in-out infinite}
+  .cone .ring:nth-of-type(2){animation-delay:.25s}.cone .ring:nth-of-type(3){animation-delay:.5s}.cone .ring:nth-of-type(4){animation-delay:.75s}
+  @keyframes pulse{50%{opacity:.35}}
+  .q{animation:rise .3s ease both}
+  @keyframes rise{from{transform:translateY(3px)}}
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="top">
+    <div class="mark">
+      <svg width="34" height="20" viewBox="0 0 34 20" aria-hidden="true"><circle cx="3" cy="10" r="2.5" fill="currentColor"/><path d="M3 10L31 2M3 10L31 10M3 10L31 18" stroke="currentColor" stroke-width="1" fill="none"/><ellipse cx="30" cy="10" rx="3" ry="8.5" fill="none" stroke="currentColor"/></svg>
+      Query Fan-Out Generator
+    </div>
+    <div class="pills"><span class="pill">Free</span><span class="pill">No sign-up</span></div>
+  </div>
+
+  <section class="hero">
+    <div>
+      <div class="label" style="margin-bottom:14px">For content marketers who write for AI search</div>
+      <h1>NextGen Query <em>Fan-Out</em> Generator</h1>
+      <p class="lede">Your reader types one question. ChatGPT, Claude, Perplexity and Google's AI Mode and AI Overviews quietly break it into many smaller searches before they answer. See every one of them, find what your blog post is missing, and get an outline that answers them all.</p>
+    </div>
+    <div class="cone">
+      <svg viewBox="0 0 520 300" fill="none" aria-hidden="true">
+        <path d="M24 150L430 18M24 150L430 282M24 150L430 150M24 150L430 84M24 150L430 216" stroke="var(--line)" stroke-width="1"/>
+        <ellipse class="ring" cx="110" cy="150" rx="12" ry="36" stroke="var(--line)" stroke-dasharray="5 5"/>
+        <ellipse class="ring" cx="200" cy="150" rx="22" ry="66" stroke="var(--line)" stroke-dasharray="6 6"/>
+        <ellipse class="ring" cx="290" cy="150" rx="32" ry="96" stroke="var(--line)" stroke-dasharray="7 7"/>
+        <ellipse class="ring" cx="360" cy="150" rx="38" ry="113" stroke="var(--line)" stroke-dasharray="7 7"/>
+        <ellipse cx="430" cy="150" rx="46" ry="132" fill="var(--green)"/>
+        <ellipse cx="24" cy="150" rx="5" ry="9" fill="var(--green)"/>
+      </svg>
+      <div class="cone-nums">
+        <div><div class="num">1</div><div class="num-cap">query you type</div></div>
+        <div class="r"><div class="num"><span id="heroN">23</span>+</div><div class="num-cap">searches predicted behind it</div>
+          <p class="src">Google says AI Mode issues “a multitude of queries simultaneously”, and its Deep Search “can issue hundreds of searches”. <a href="https://blog.google/products-and-platforms/products/search/google-search-ai-mode-update/" target="_blank" rel="noopener">Source: Google, May 2025</a></p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="steps" aria-label="How it works">
+    <div class="step"><span class="label">Step 1</span><b>Type your topic</b><span>The keyword or question your blog post targets.</span></div>
+    <div class="step"><span class="label">Step 2</span><b>See the hidden searches</b><span>Grouped by what readers really want, ranked by how much they matter.</span></div>
+    <div class="step"><span class="label">Step 3</span><b>Write, then check</b><span>Follow the outline, paste your draft, and close the gaps.</span></div>
+  </section>
+
+  <form class="console" id="form" novalidate>
+    <div class="seed-row">
+      <div class="field">
+        <label for="seed">Your topic or keyword</label>
+        <input type="text" id="seed" autocomplete="off" value="Dolomites itinerary 1 week">
+      </div>
+      <button type="submit" class="btn" id="go">Fan it out</button>
+    </div>
+    <div class="grid3">
+      <div class="field">
+        <label for="engine">Where should it show up?</label>
+        <select id="engine">
+          <optgroup label="Google">
+            <option value="aio">Google AI Overviews</option>
+            <option value="aim" selected>Google AI Mode</option>
+          </optgroup>
+          <optgroup label="AI assistants">
+            <option value="gpt">ChatGPT search</option>
+            <option value="claude">Claude (web search)</option>
+            <option value="pplx">Perplexity</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="field">
+        <label for="market">Language &amp; market</label>
+        <select id="market">
+          <option value="en|global">English · Global</option>
+          <option value="en|UK">English · UK</option>
+          <option value="en|US">English · US</option>
+          <option value="it|Italy">Italiano · Italia</option>
+          <option value="nl|Netherlands">Nederlands · Nederland</option>
+          <option value="nl|Belgium">Nederlands · België</option>
+          <option value="de|Germany">Deutsch · Deutschland</option>
+          <option value="fr|France">Français · France</option>
+          <option value="es|Spain">Español · España</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="reader">Who reads it? <span style="text-transform:none;letter-spacing:0">(optional)</span></label>
+        <input type="text" id="reader" autocomplete="off" placeholder="e.g. couples who hike but aren't climbers">
+      </div>
+    </div>
+    <details class="adv">
+      <summary>Choose search types</summary>
+      <div class="types" id="types"></div>
+    </details>
+    <div class="actions">
+      <span class="status" id="status" role="status"></span>
+      <button type="button" class="link" id="manualBtn">No AI access? Copy the prompt instead</button>
+    </div>
+    <div class="manual" id="manual" hidden></div>
+  </form>
+
+  <section class="results" id="results" aria-live="polite"></section>
+
+  <footer>
+    <div>
+      <p><b style="color:var(--ink)">What you're looking at.</b> AI search engines like Google AI Mode split your question into many smaller searches, read the best passages, and write one answer. They don't show those searches to anyone. This tool writes the prompt that makes your AI assistant predict them, reasoning the same way. They're informed predictions, not data pulled from Google or any AI assistant.</p>
+      <p>Google describes the technique as “breaking down your question into subtopics and issuing a multitude of queries simultaneously on your behalf”. <a href="https://blog.google/products-and-platforms/products/search/google-search-ai-mode-update/" target="_blank" rel="noopener" style="color:var(--ink)">Read Google's announcement</a></p>
+      <p>Use them to plan sections and FAQs, then confirm demand in Google Search Console or your keyword tool.</p>
+      <p><b style="color:var(--ink)">Privacy.</b> This page sends nothing anywhere. The prompt runs in your own AI chat, under that tool's privacy settings, and your last result stays in your browser.</p>
+    </div>
+    <div>
+      <p><b style="color:var(--ink)">Getting the most out of it</b></p>
+      <p>Must answer = give it its own section. Should answer = cover it inside a section. Nice to have = an FAQ line, or skip.</p>
+      <p>Write each section so it makes sense on its own. AI quotes passages, not whole pages.</p>
+    </div>
+  </footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- Configuration ----------
+   Hosted builds swap the AI adapter: set HOSTED_ENDPOINT to the backend route
+   (e.g. "/api/generate") or leave both off for the copy-prompt-only static build. */
+const HOSTED_ENDPOINT = "";
+/* Static build (GitHub Pages): no AI calls from the site; every action hands the visitor a prompt to run in their own AI chat. */
+const STATIC_BUILD = true;
+
+const TYPES=[
+ {id:"implicit",name:"Hidden needs",d:"What readers want to know but didn't type."},
+ {id:"related",name:"Related questions",d:"The next questions people ask on the same topic."},
+ {id:"comparative",name:"Comparisons",d:"This vs that, alternatives, which one is better."},
+ {id:"entity",name:"Names & places to mention",d:"Brands, places, products and people AI expects to see named."},
+ {id:"personalized",name:"Specific situations",d:"The same topic for a budget, a group, a season or a location."},
+ {id:"recent",name:"Fresh & timely",d:"What's new, changed or current this year."},
+ {id:"reformulation",name:"Other ways to ask",d:"Same need, different wording. Answer once, use the wording."}
+];
+const PRIO={must:"Must answer",should:"Should answer",nice:"Nice to have"};
+const PRIO_W={must:3,should:2,nice:1};
+const ENGINES={
+ aio:{name:"Google AI Overviews",desc:"Google AI Overviews, which runs a small, focused fan-out",total:"12 to 16"},
+ aim:{name:"Google AI Mode",desc:"Google AI Mode, which runs a broad, deep fan-out across many subtopics",total:"20 to 28"},
+ gpt:{name:"ChatGPT search",desc:"ChatGPT search, which issues fewer but longer, more specific web searches",total:"8 to 12"},
+ claude:{name:"Claude (web search)",desc:"Claude with web search, which runs a handful of targeted searches and refines them as it reads the results",total:"8 to 12"},
+ pplx:{name:"Perplexity",desc:"Perplexity, which runs several web searches in parallel and cites the sources it reads",total:"10 to 14"}
+};
+const LANGS={en:"English",it:"Italian",nl:"Dutch",de:"German",fr:"French",es:"Spanish"};
+
+/* ---------- Example (Dolomites) ---------- */
+const EXAMPLE={
+ seed:"Dolomites itinerary 1 week",engine:"aim",market:"en|global",
+ intent:"Plan a one-week trip to the Dolomites: where to base yourself, which hikes and viewpoints to prioritise, how to get around and when to go.",
+ queries:[
+  {id:"q1",type:"implicit",q:"best time to visit the Dolomites for hiking",why:"Season decides which lifts and huts are open",priority:"must",format:"direct answer"},
+  {id:"q2",type:"implicit",q:"where to stay in the Dolomites for a week",why:"Base choice shapes the whole route",priority:"must",format:"comparison"},
+  {id:"q3",type:"implicit",q:"do you need a car in the Dolomites",why:"Transport decides what's realistic in 7 days",priority:"must",format:"direct answer"},
+  {id:"q4",type:"implicit",q:"how much does a week in the Dolomites cost",why:"Budget is the deciding factor for most readers",priority:"should",format:"table"},
+  {id:"q5",type:"implicit",q:"Dolomites cable car pass worth it",why:"Lift passes are a big hidden cost",priority:"should",format:"direct answer"},
+  {id:"q6",type:"related",q:"best hikes in the Dolomites",why:"Builds the shortlist the week is made from",priority:"must",format:"list"},
+  {id:"q7",type:"related",q:"staying overnight in a Dolomites rifugio",why:"Hut nights are the trip's signature experience",priority:"should",format:"steps"},
+  {id:"q8",type:"related",q:"what to pack for hiking in the Dolomites",why:"Mountain weather changes fast",priority:"nice",format:"list"},
+  {id:"q9",type:"comparative",q:"Val Gardena vs Cortina d'Ampezzo as a base",why:"The two most common bases compared",priority:"must",format:"comparison"},
+  {id:"q10",type:"comparative",q:"Dolomites vs Swiss Alps for a hiking holiday",why:"Readers often choose between the two",priority:"nice",format:"comparison"},
+  {id:"q11",type:"comparative",q:"Dolomites by car vs public transport",why:"Decides how the itinerary is used",priority:"should",format:"comparison"},
+  {id:"q12",type:"entity",q:"Tre Cime di Lavaredo loop hike",why:"The most-cited hike of any Dolomites route",priority:"must",format:"steps"},
+  {id:"q13",type:"entity",q:"Lago di Braies best time to avoid crowds",why:"Iconic lake with heavy summer crowds",priority:"should",format:"direct answer"},
+  {id:"q14",type:"entity",q:"Seceda ridge from Ortisei",why:"Signature viewpoint in Val Gardena",priority:"should",format:"steps"},
+  {id:"q15",type:"entity",q:"Alpe di Siusi easy walks",why:"Gentle option for mixed-ability groups",priority:"should",format:"list"},
+  {id:"q16",type:"entity",q:"Lago di Sorapis hike difficulty",why:"Popular but often underestimated hike",priority:"nice",format:"direct answer"},
+  {id:"q17",type:"personalized",q:"Dolomites itinerary without a car",why:"Train and bus travellers need a different route",priority:"should",format:"table"},
+  {id:"q18",type:"personalized",q:"Dolomites with kids in summer",why:"Families need shorter walks and lift-served trails",priority:"nice",format:"explainer"},
+  {id:"q19",type:"personalized",q:"Dolomites in September",why:"Shoulder season changes what's open",priority:"nice",format:"explainer"},
+  {id:"q20",type:"recent",q:"Lago di Braies road access reservation 2026",why:"Summer access rules change year to year",priority:"should",format:"direct answer"},
+  {id:"q21",type:"recent",q:"Tre Cime toll road price 2026",why:"Current costs signal up-to-date advice",priority:"nice",format:"direct answer"},
+  {id:"q22",type:"reformulation",q:"7 day Dolomites road trip",why:"Same need, phrased as a road trip",priority:"nice",format:"table"},
+  {id:"q23",type:"reformulation",q:"one week in the Dolomites plan",why:"Same need, phrased as a plan",priority:"nice",format:"table"}
+ ],
+ brief:{
+  title:"One Week in the Dolomites: A Day-by-Day Itinerary with the Best Hikes",
+  angle:"Give a 7-day route with two bases, realistic hiking days and the access rules that catch visitors out.",
+  outline:[
+   {level:2,h:"The Dolomites at a glance: when to go, getting around, budget",covers:["q1","q3","q4"],format:"direct answer",tip:"Open with a quick-facts box: three short answers, one line each."},
+   {level:2,h:"Where to stay: Val Gardena or Cortina?",covers:["q2","q9"],format:"comparison",tip:"Recommend splitting the week between two bases, and say why."},
+   {level:2,h:"The 7-day itinerary, day by day",covers:["q6","q22","q23"],format:"table",tip:"Start with a summary table, then one section per stage."},
+   {level:3,h:"Days 1–3: Val Gardena, Seceda and Alpe di Siusi",covers:["q14","q15"],format:"steps",tip:"Name the lift, the trail number and how long each day takes."},
+   {level:3,h:"Day 4: Lago di Braies on the way east",covers:["q13","q20"],format:"steps",tip:"Give the arrival time that beats the crowds."},
+   {level:3,h:"Days 5–7: Cortina, Tre Cime and Lago di Sorapis",covers:["q12","q16","q7"],format:"steps",tip:"Suggest one rifugio night on the Tre Cime loop."},
+   {level:2,h:"Getting around: car, buses or both",covers:["q11","q17","q21"],format:"comparison",tip:"A small table: car vs bus for each stage of the route."},
+   {level:2,h:"Lift passes and costs for the week",covers:["q5","q4"],format:"table",tip:"Show budget and mid-range columns side by side."},
+   {level:2,h:"Adapting the week: families and September trips",covers:["q18","q19"],format:"explainer",tip:"One short paragraph per traveller type."},
+   {level:2,h:"FAQ",covers:["q8","q10"],format:"faq",tip:"Short Q&As for the leftovers."}
+  ]
+ },
+ check:null
+};
+
+/* ---------- State ---------- */
+const $=s=>document.querySelector(s);
+let state={data:EXAMPLE,example:true,tab:"searches",draft:"",gapsOnly:false};
+try{const s=JSON.parse(localStorage.getItem("qfo-v3")||"null");if(s&&s.data&&Array.isArray(s.data.queries))state=Object.assign(state,s)}catch(e){}
+function save(){try{localStorage.setItem("qfo-v3",JSON.stringify(state))}catch(e){}}
+
+/* ---------- Form ---------- */
+const typeBox=$("#types");
+TYPES.forEach(t=>{
+  const l=document.createElement("label");l.className="tchip";l.title=t.d;
+  l.innerHTML=`<input type="checkbox" id="ty-${t.id}" checked><span></span>`;l.querySelector("span").textContent=t.name;typeBox.append(l);
+});
+if(!state.example){$("#seed").value=state.data.seed;$("#engine").value=state.data.engine||"aim";$("#market").value=state.data.market||"en|global";$("#reader").value=state.data.reader||""}
+
+function readForm(){
+  const seed=$("#seed").value.trim();
+  const types=TYPES.filter(t=>$("#ty-"+t.id).checked);
+  const [lang,region]=$("#market").value.split("|");
+  return {seed,types,engine:$("#engine").value,market:$("#market").value,lang,region,reader:$("#reader").value.trim()};
+}
+
+/* ---------- Prompts ---------- */
+function genPrompt(f){
+  const e=ENGINES[f.engine],L=LANGS[f.lang];
+  const marketLine=f.region==="global"?`Write every query and heading in ${L}, as people search worldwide.`
+    :`Write every query and heading in ${L} exactly as people in ${f.region} type them: native phrasing, local spelling, local currency, units and brands. Never translate English queries word for word.`;
+  return `You simulate the query fan-out of ${e.desc}. A content marketer with little SEO knowledge will use your output to plan and write one blog post.
+
+Seed query: "${f.seed}"
+${f.reader?`Target reader: ${f.reader}\n`:""}${marketLine}
+Write "intent", "why", "tip" and "angle" in plain English, short and jargon-free.
+
+Generate ${e.total} sub-queries in total, spread across these types (skip a type only if it truly does not apply):
+${f.types.map(t=>`- ${t.id}: ${t.d}`).join("\n")}
+For "recent" use the year 2026 where natural. No duplicates or near-duplicates. Queries must be short and realistic, as typed into a search box.
+
+Then plan the blog post that answers them: a suggested H1 title, a one-sentence angle, and an outline in natural reading order (6 to 10 H2 sections, H3s where a section needs steps or stages). Merge "reformulation" queries into the section they share a need with. Every "must" query must be covered by a section. End with an FAQ section for leftovers.
+
+Reply with only JSON in this exact shape:
+{"intent":"one sentence: what the searcher is really trying to do",
+ "queries":[{"id":"q1","type":"one of: ${f.types.map(t=>t.id).join(", ")}","q":"the sub-query","why":"under 12 words: what this search fetches for the answer","priority":"must|should|nice","format":"direct answer|list|table|steps|comparison|explainer|faq"}],
+ "brief":{"title":"suggested H1","angle":"one sentence: what the post must do better than a generic answer","outline":[{"level":2,"h":"section heading","covers":["q1","q4"],"format":"same options as above","tip":"one practical writing tip, max 15 words"}]}}
+priority: must = almost certainly searched and essential to the answer; should = likely; nice = possible.`;
+}
+function checkPrompt(d,draft){
+  return `You check a blog draft against the sub-queries AI search would run for the topic "${d.seed}".
+For each sub-query decide:
+- covered: the draft answers it clearly, in a passage that would make sense quoted on its own
+- partial: mentioned, but thin, vague or buried
+- missing: not answered
+Be strict: a passing mention is partial, not covered.
+
+Sub-queries:
+${d.queries.map(q=>`${q.id} [${q.priority}]: ${q.q}`).join("\n")}
+
+Draft:
+"""
+${draft.slice(0,40000)}
+"""
+
+Reply with only JSON:
+{"results":[{"id":"q1","status":"covered|partial|missing","note":"max 15 words: what is there, or exactly what to add"}],
+ "fixes":["the 3 changes that would raise coverage most, max 20 words each, most important first"]}`;
+}
+
+/* ---------- AI adapter ---------- */
+let sample=null,downloads=null,sampleTried=false;
+async function getSample(){
+  if(sampleTried)return sample;sampleTried=true;
+  try{sample=window.claude?await claude.use("sample"):null}catch(e){sample=null}
+  return sample;
+}
+function parseJSON(text){
+  try{return JSON.parse(text)}catch(e){}
+  const m=String(text).match(/```(?:json)?\s*([\s\S]*?)```/);if(m){try{return JSON.parse(m[1])}catch(e){}}
+  const a=text.indexOf("{"),b=text.lastIndexOf("}");
+  if(a>-1&&b>a){try{return JSON.parse(text.slice(a,b+1))}catch(e){}}
+  throw {code:"invalid_json"};
+}
+async function askAI(prompt,signal){
+  if(HOSTED_ENDPOINT){
+    const r=await fetch(HOSTED_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt}),signal});
+    if(r.status===429)throw {code:"quota"};
+    if(!r.ok)throw {code:"upstream_error"};
+    return parseJSON((await r.json()).text);
+  }
+  const s=await getSample();
+  if(!s)throw {code:"no_ai"};
+  return s.json(prompt,{signal,cache:false});
+}
+const MSG={
+  no_ai:"AI generation isn't available here. Use “Copy the prompt instead” below.",
+  quota:"Today's free generations are used up. Copy the prompt instead and run it in any AI chat.",
+  not_granted:"AI generation isn't available right now. Copy the prompt instead.",
+  sampling_disabled:"AI generation isn't available on this account. Copy the prompt instead.",
+  rate_limited:"Too many requests in a row. Wait a minute, then try again.",
+  invalid_json:"The answer came back in the wrong shape. Try again.",
+  refused:"The AI declined this topic. Rephrase it and try again.",
+  session_expired:"Sign in again, then retry.",
+  cancelled:"Stopped."
+};
+
+/* ---------- Clean model output ---------- */
+function cleanGen(res,f){
+  if(!res||!Array.isArray(res.queries))throw {code:"invalid_json"};
+  const ids=new Set(f.types.map(t=>t.id)),seen=new Set();let n=0;
+  const queries=res.queries.filter(q=>q&&q.q&&ids.has(q.type)).map(q=>{
+    let id=String(q.id||"");if(!id||seen.has(id)){id="q"+(++n+100)}seen.add(id);
+    return {id,type:q.type,q:String(q.q),why:String(q.why||""),priority:PRIO[q.priority]?q.priority:"should",format:String(q.format||"explainer")};
+  });
+  const valid=new Set(queries.map(q=>q.id));
+  const b=res.brief||{};
+  const outline=(Array.isArray(b.outline)?b.outline:[]).filter(o=>o&&o.h).map(o=>({level:+o.level===3?3:2,h:String(o.h),covers:(Array.isArray(o.covers)?o.covers:[]).map(String).filter(x=>valid.has(x)),format:String(o.format||""),tip:String(o.tip||"")}));
+  return {seed:f.seed,engine:f.engine,market:f.market,reader:f.reader,intent:String(res.intent||""),queries,brief:{title:String(b.title||""),angle:String(b.angle||""),outline},check:null};
+}
+function cleanCheck(res,d){
+  if(!res||!Array.isArray(res.results))throw {code:"invalid_json"};
+  const valid=new Set(d.queries.map(q=>q.id)),map={};
+  res.results.forEach(r=>{if(r&&valid.has(String(r.id))&&["covered","partial","missing"].includes(r.status))map[r.id]={status:r.status,note:String(r.note||"")}});
+  d.queries.forEach(q=>{if(!map[q.id])map[q.id]={status:"missing",note:""}});
+  return {map,fixes:(Array.isArray(res.fixes)?res.fixes:[]).map(String).slice(0,3)};
+}
+function coverage(d){
+  if(!d.check)return null;let tot=0,got=0;const c={covered:0,partial:0,missing:0};
+  d.queries.forEach(q=>{const w=PRIO_W[q.priority],s=d.check.map[q.id].status;tot+=w;got+=s==="covered"?w:s==="partial"?w/2:0;c[s]++});
+  return {pct:tot?Math.round(got/tot*100):0,...c};
+}
+
+/* ---------- Hero counter ---------- */
+let shownN=null;
+function countUp(n){
+  const out=$("#heroN");if(n===shownN)return;shownN=n;
+  const still=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(still){out.textContent=n;return}
+  const t0=performance.now(),dur=1400+Math.min(n,60)*12;
+  cancelAnimationFrame(countUp.raf);
+  const tick=now=>{const p=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-p,3);out.textContent=Math.max(1,Math.round(1+(n-1)*e));if(p<1)countUp.raf=requestAnimationFrame(tick)};
+  out.textContent=1;countUp.raf=requestAnimationFrame(tick);
+}
+
+/* ---------- Rendering ---------- */
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e};
+function toast(t){const x=$("#toast");x.textContent=t;x.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>x.hidden=true,1600)}
+function copy(text,msg){
+  try{navigator.clipboard.writeText(text).then(()=>toast(msg||"Copied"),()=>toast("Copy blocked. Select the text manually."))}catch(e){toast("Copy blocked. Select the text manually.")}
+}
+
+function render(){
+  const r=$("#results"),d=state.data;r.innerHTML="";
+  countUp(d.queries.length);
+  const head=el("div","rhead");
+  const hl=el("div");hl.append(el("div","label",`Fan-out · ${ENGINES[d.engine]?.name||""} · ${($("#market").querySelector(`option[value="${d.market}"]`)||{}).textContent||""}`));
+  const h2=el("h2");h2.textContent="“"+d.seed+"”";hl.append(h2);head.append(hl);
+  if(state.example){head.append(el("span","example","Example"))}
+  r.append(head);
+  const it=el("div","intent");it.append(el("span","label","Searcher's goal"));it.append(el("p",null,d.intent));r.append(it);
+
+  const cov=coverage(d);
+  const tabs=el("div","tabs");tabs.setAttribute("role","tablist");
+  [["searches","Hidden searches",d.queries.length],["outline","Blog outline",d.brief.outline.length+" sections"],["check","Check my draft",cov?cov.pct+"%":"new"]].forEach(([id,name,c])=>{
+    const b=el("button","tab");b.type="button";b.id="tab-"+id;b.setAttribute("role","tab");b.setAttribute("aria-selected",state.tab===id);
+    b.append(name);const s=el("span","c",String(c));b.append(s);b.onclick=()=>{state.tab=id;save();render()};tabs.append(b);
+  });
+  r.append(tabs);
+  const p=el("div","panel");p.setAttribute("role","tabpanel");
+  if(state.tab==="searches")renderSearches(p,d,cov);
+  else if(state.tab==="outline")renderOutline(p,d);
+  else renderCheck(p,d,cov);
+  r.append(p);
+}
+
+function diagram(d){
+  const groups=TYPES.map(t=>({t,n:d.queries.filter(q=>q.type===t.id).length})).filter(g=>g.n);
+  const W=760,rowH=54,H=Math.max(groups.length*rowH+30,200),cy=H/2,sx=40,nx=430;
+  const max=Math.max(...groups.map(g=>g.n));
+  let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Fan-out diagram: ${groups.map(g=>g.t.name+" "+g.n).join(", ")}">`;
+  groups.forEach((g,i)=>{const y=15+rowH*i+rowH/2;s+=`<path d="M${sx} ${cy} C ${sx+180} ${cy}, ${nx-200} ${y}, ${nx-18} ${y}" stroke="var(--line)" fill="none"/>`;});
+  [150,260].forEach((x,i)=>{s+=`<ellipse cx="${x}" cy="${cy}" rx="${10+i*8}" ry="${H*0.18+i*H*0.12}" fill="none" stroke="var(--line)" stroke-dasharray="5 6"/>`});
+  s+=`<ellipse cx="${sx}" cy="${cy}" rx="7" ry="12" fill="var(--green)"/>`;
+  s+=`<text x="${sx-4}" y="${cy+34}" font-family="Geist Mono, monospace" font-size="11" fill="var(--muted)" letter-spacing="1">YOUR QUERY</text>`;
+  groups.forEach((g,i)=>{const y=15+rowH*i+rowH/2,rx=8+12*(g.n/max),ry=10+10*(g.n/max);
+    s+=`<g class="node" data-g="${g.t.id}" tabindex="0" role="link"><ellipse cx="${nx}" cy="${y}" rx="${rx}" ry="${ry}" fill="var(--green)"/>`+
+       `<text x="${nx+34}" y="${y+5}" font-family="Geist Mono, monospace" font-size="13" fill="var(--muted)">${String(g.n).padStart(2,"0")}</text>`+
+       `<text x="${nx+62}" y="${y+6}" font-family="Instrument Serif, serif" font-size="22" fill="var(--ink)">${g.t.name}</text></g>`;});
+  return s+"</svg>";
+}
+
+function queryRow(q,d){
+  const row=el("div","q");
+  const dot=el("span","prio "+q.priority);dot.title=PRIO[q.priority];row.append(dot);
+  const t=el("div");t.style.minWidth="0";t.append(el("div","qt",q.q));t.append(el("div","why",q.why));row.append(t);
+  const m=el("div","meta");m.append(el("span","chip","Answer with: "+q.format));
+  const c=el("button","mini","Copy");c.type="button";c.onclick=()=>copy(q.q);m.append(c);row.append(m);
+  if(d.check){const r=d.check.map[q.id],cv=el("div","cov");cv.append(el("span","st "+r.status,r.status));if(r.note)cv.append(el("span",null,r.note));row.append(cv)}
+  return row;
+}
+
+function renderSearches(p,d,cov){
+  const dg=el("div","diagram");dg.innerHTML=diagram(d);p.append(dg);
+  dg.querySelectorAll(".node").forEach(n=>{const go=()=>document.getElementById("g-"+n.dataset.g)?.scrollIntoView({behavior:"smooth"});n.onclick=go;n.onkeydown=e=>{if(e.key==="Enter")go()}});
+  const tb=el("div","toolbar");
+  const lg=el("div","legend");lg.innerHTML=`<span><i class="prio must" style="margin:0"></i>Must answer</span><span><i class="prio should" style="margin:0"></i>Should answer</span><span><i class="prio nice" style="margin:0"></i>Nice to have</span>`;
+  tb.append(lg);
+  const acts=el("div","actions");
+  if(d.check){const g=el("button","ghost",state.gapsOnly?"Show all":"Show gaps only");g.type="button";g.onclick=()=>{state.gapsOnly=!state.gapsOnly;save();render()};acts.append(g)}
+  const ca=el("button","ghost","Copy all");ca.type="button";ca.onclick=()=>copy(d.queries.map(q=>q.q).join("\n"),"All searches copied");acts.append(ca);
+  if(downloads){const dl=el("button","ghost","Download CSV");dl.type="button";dl.onclick=()=>saveFile("csv");acts.append(dl)}
+  tb.append(acts);p.append(tb);
+  TYPES.forEach(t=>{
+    let qs=d.queries.filter(q=>q.type===t.id);
+    if(state.gapsOnly&&d.check)qs=qs.filter(q=>d.check.map[q.id].status!=="covered");
+    if(!qs.length)return;
+    qs.sort((a,b)=>PRIO_W[b.priority]-PRIO_W[a.priority]);
+    const g=el("div","group");g.id="g-"+t.id;
+    const h=el("div","ghead");h.append(el("h3",null,t.name));h.append(el("span","n",qs.length+(qs.length===1?" search":" searches")));h.append(el("p",null,t.d));g.append(h);
+    qs.forEach(q=>g.append(queryRow(q,d)));p.append(g);
+  });
+}
+
+function outlineMd(d){
+  const byId=Object.fromEntries(d.queries.map(q=>[q.id,q]));
+  let md=`# ${d.brief.title}\n\n> ${d.brief.angle}\n\n`;
+  d.brief.outline.forEach(o=>{
+    md+=`${o.level===3?"###":"##"} ${o.h}\n`;
+    if(o.format)md+=`- Answer with: ${o.format}\n`;
+    if(o.tip)md+=`- Tip: ${o.tip}\n`;
+    o.covers.forEach(id=>{md+=`- Answers: ${byId[id].q}\n`});
+    md+="\n";
+  });
+  return md;
+}
+function renderOutline(p,d){
+  const top=el("div","brief-top");top.append(el("span","label","Suggested title"));top.append(el("div","h1",d.brief.title));top.append(el("p",null,d.brief.angle));p.append(top);
+  const tb=el("div","toolbar");tb.append(el("span","hint","Each section lists the searches it answers. Open every section with a direct answer, then add detail."));
+  const acts=el("div","actions");const c=el("button","ghost","Copy outline");c.type="button";c.onclick=()=>copy(outlineMd(d),"Outline copied as Markdown");acts.append(c);
+  if(downloads){const dl=el("button","ghost","Download .md");dl.type="button";dl.onclick=()=>saveFile("md");acts.append(dl)}
+  tb.append(acts);p.append(tb);
+  const byId=Object.fromEntries(d.queries.map(q=>[q.id,q]));
+  const ol=el("div","ol");
+  d.brief.outline.forEach(o=>{
+    const it=el("div","oi"+(o.level===3?" h3":""));it.append(el("span","lv","H"+o.level));
+    const b=el("div");b.style.minWidth="0";b.append(el("div","h",o.h));if(o.tip)b.append(el("div","tip",o.tip));
+    const a=el("div","ans");if(o.format)a.append(el("span","chip","Answer with: "+o.format));
+    o.covers.forEach(id=>{const ch=el("span","chip",byId[id].q);ch.style.color="var(--muted)";a.append(ch)});
+    b.append(a);it.append(b);ol.append(it);
+  });
+  p.append(ol);
+}
+
+let checkCtl=null;
+function renderCheck(p,d,cov){
+  const grid=el("div","draft-grid");
+  const left=el("div");left.style.display="grid";left.style.gap="10px";
+  const lab=el("label","label","Paste your draft (text or Markdown)");lab.htmlFor="draft";left.append(lab);
+  const ta=el("textarea");ta.id="draft";ta.rows=14;ta.placeholder="Paste the full text of your blog post here. Headings help, formatting doesn't matter.";ta.value=state.draft;
+  ta.oninput=()=>{state.draft=ta.value;save()};left.append(ta);
+  const acts=el("div","actions");
+  const go=el("button","btn","Check coverage");go.type="button";go.id="checkGo";acts.append(go);
+  const man=el("button","link","No AI access? Copy the prompt");man.type="button";acts.append(man);
+  const st=el("span","status");st.id="checkStatus";acts.append(st);left.append(acts);
+  const mbox=el("div","manual");mbox.hidden=true;left.append(mbox);
+  if(STATIC_BUILD){go.textContent="Get the check prompt";man.hidden=true}
+  go.onclick=async()=>{
+    if(STATIC_BUILD){man.onclick();return}
+    if(state.draft.trim().length<200){st.textContent="Paste at least a few paragraphs first.";st.classList.add("err");return}
+    checkCtl?.abort();checkCtl=new AbortController();go.disabled=true;st.classList.remove("err");st.textContent="Reading your draft… up to a minute.";
+    try{const res=await askAI(checkPrompt(d,state.draft),checkCtl.signal);d.check=cleanCheck(res,d);save();render()}
+    catch(e){st.textContent=MSG[e&&e.code]||"Something went wrong. Try again.";st.classList.add("err");go.disabled=false}
+  };
+  man.onclick=()=>{
+    if(state.draft.trim().length<200){st.textContent="Paste at least a few paragraphs first.";st.classList.add("err");return}
+    manualPanel(mbox,checkPrompt(d,state.draft),res=>{d.check=cleanCheck(res,d);save();render()});
+  };
+  grid.append(left);
+  const right=el("div");
+  if(cov){
+    const s=el("div","score");s.append(el("span","label","AI search coverage"));
+    s.append(el("div","big",cov.pct+"%"));
+    const n=d.queries.length,bar=el("div","bar");
+    [["covered","var(--ok)"],["partial","var(--warn)"],["missing","var(--bad)"]].forEach(([k,c])=>{const i=el("i");i.style.width=(cov[k]/n*100)+"%";i.style.background=c;bar.append(i)});
+    s.append(bar);
+    s.append(el("div","hint",`${cov.covered} covered · ${cov.partial} partly · ${cov.missing} missing. Must-answer searches count triple.`));
+    if(d.check.fixes.length){s.append(el("span","label","Fix these first"));const ol=el("ol","fixes");d.check.fixes.forEach(f=>ol.append(el("li",null,f)));s.append(ol)}
+    const v=el("button","ghost","See every search with its status");v.type="button";v.style.justifySelf="start";v.onclick=()=>{state.tab="searches";state.gapsOnly=true;save();render()};s.append(v);
+    right.append(s);
+  }else{
+    const e=el("div","empty");
+    e.innerHTML=`<div class="label" style="margin-bottom:8px">How it works</div><p style="margin:0 0 8px">Paste your draft and the checker marks every hidden search as <span class="st covered">covered</span>, <span class="st partial">partial</span> or <span class="st missing">missing</span>.</p><p style="margin:0">You get one coverage score and the three fixes that would raise it most. It's strict: a passing mention counts as partial.</p>`;
+    right.append(e);
+  }
+  grid.append(right);p.append(grid);
+}
+
+/* ---------- Copy-prompt (manual) flow ---------- */
+function manualPanel(box,prompt,onResult){
+  box.hidden=false;box.innerHTML="";
+  box.append(el("span","label","Run it in any AI chat"));
+  const ol=el("ol");["Copy the prompt.","Paste it into ChatGPT, Claude, Gemini or Copilot. Any free account works.","Copy the whole answer and paste it below. Your results appear on this page."].forEach(t=>ol.append(el("li",null,t)));box.append(ol);
+  const acts=el("div","actions");const cp=el("button","ghost","Copy prompt");cp.type="button";cp.onclick=()=>copy(prompt,"Prompt copied");acts.append(cp);box.append(acts);
+  const ta=el("textarea");ta.rows=4;ta.placeholder="Paste the AI's answer here";ta.setAttribute("aria-label","AI answer");box.append(ta);
+  const a2=el("div","actions");const ok=el("button","btn","Show results");ok.type="button";const st=el("span","status");a2.append(ok,st);box.append(a2);
+  ok.onclick=()=>{try{onResult(parseJSON(ta.value));box.hidden=true}catch(e){st.textContent="That doesn't look like the full answer. Copy all of it, including the { } brackets.";st.classList.add("err")}};
+}
+
+/* ---------- Files ---------- */
+function csvCell(s){s=String(s??"");return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
+async function saveFile(kind){
+  const d=state.data,slug=d.seed.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,50)||"fan-out";
+  let data,filename;
+  if(kind==="csv"){
+    const rows=[["search","type","priority","answer_with","why","coverage","note"]].concat(d.queries.map(q=>{const c=d.check?.map[q.id];return [q.q,TYPES.find(t=>t.id===q.type)?.name,PRIO[q.priority],q.format,q.why,c?.status||"",c?.note||""]}));
+    data=rows.map(r=>r.map(csvCell).join(",")).join("\n");filename=`fan-out-${slug}.csv`;
+  }else{data=outlineMd(d);filename=`outline-${slug}.md`}
+  try{await downloads.save({filename,data})}catch(e){if(e&&e.code!=="declined")toast("Download isn't available here. Use Copy instead.")}
+}
+
+/* ---------- Generate ---------- */
+let genCtl=null;
+const statusEl=$("#status");
+function setStatus(t,err){statusEl.textContent=t;statusEl.classList.toggle("err",!!err)}
+function validate(f){
+  if(!f.seed){setStatus("Type a topic or keyword first.",true);$("#seed").focus();return false}
+  if(!f.types.length){setStatus("Choose at least one search type.",true);return false}
+  return true;
+}
+function applyGen(res,f){
+  state={...state,data:cleanGen(res,f),example:false,tab:"searches",gapsOnly:false};
+  save();render();setStatus(`Done: ${state.data.queries.length} hidden ${state.data.queries.length===1?"search":"searches"}.`);
+  document.getElementById("results").scrollIntoView({behavior:"smooth",block:"start"});
+}
+$("#form").onsubmit=async e=>{
+  e.preventDefault();const f=readForm();if(!validate(f))return;
+  if(STATIC_BUILD){openGenPrompt(f);return}
+  genCtl?.abort();genCtl=new AbortController();$("#go").disabled=true;
+  setStatus("Fanning out… this takes 20–60 seconds.");
+  try{applyGen(await askAI(genPrompt(f),genCtl.signal),f)}
+  catch(err){setStatus(MSG[err&&err.code]||"Something went wrong. Try again.",err&&err.code!=="cancelled")}
+  finally{$("#go").disabled=false}
+};
+function openGenPrompt(f){setStatus("");manualPanel($("#manual"),genPrompt(f),res=>{try{applyGen(res,f)}catch(e){setStatus(MSG.invalid_json,true)}});$("#manual").scrollIntoView({behavior:"smooth",block:"nearest"})}
+$("#manualBtn").onclick=()=>{const f=readForm();if(!validate(f))return;openGenPrompt(f)};
+if(STATIC_BUILD){$("#manualBtn").hidden=true;$("#go").textContent="Get my prompt"}
+
+if(HOSTED_ENDPOINT||STATIC_BUILD){downloads={save:async({filename,data})=>{const u=URL.createObjectURL(new Blob([data],{type:filename.endsWith(".csv")?"text/csv;charset=utf-8":"text/markdown;charset=utf-8"}));const a=document.createElement("a");a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}}}
+render();
+if(!HOSTED_ENDPOINT&&!STATIC_BUILD){(async()=>{try{downloads=window.claude?await claude.use("downloads"):null}catch(e){}if(downloads)render()})();}
+</script>
+
+</body>
+</html>
